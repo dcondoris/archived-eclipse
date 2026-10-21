@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Pixels</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
+        .canvas-container { position: relative; width: 400px; height: 400px; display: flex; justify-content: center; align-items: center; background-color: white; border: 2px solid black; margin-bottom: 10px; }
+        canvas { position: absolute; }
+        .btn-container { display: flex; gap: 10px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .result-container {
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+        margin-left: 1500px;
+        margin-top: 20px;
+        }
+        #predictionResult { 
+            font-size: 20px; 
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <h1>Write a Digit:</h1>
+    <div class="canvas-container">
+        <canvas id="drawCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <div class="btn-container">
+        <button onclick="sendRawPixels()">Predict</button>
+        <button onclick="clearCanvas()">Reset</button>
+    </div>
+
+    <div class="result-container">
+        <div id="predictionResult">Prediction: </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        const penSize = 40; // Taille du stylo fixée à 10
+
+        function startDrawing(event) {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(event.offsetX, event.offsetY);
+        }
+
+        function draw(event) {
+            if (!drawing) return;
+            ctx.lineTo(event.offsetX, event.offsetY);
+            ctx.lineWidth = penSize;
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            drawing = false;
+            ctx.closePath();
+        }
+
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'black';
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        function sendRawPixels() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixelData = imageData.data;
+
+            fetch('/send_pixels', {
+                method: 'POST',
+                body: pixelData,
+                headers: { 'Content-Type': 'application/octet-stream' }
+            }).then(response => response.text())
+              .then(data => {document.getElementById('predictionResult').textContent = `Prediction: ${data}`;});
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('predictionResult').textContent = 'Prediction: ';
+        }
+
+        // Initialiser le canvas avec un fond blanc
+        clearCanvas();
+    </script>
+
+</body>
+</html>
